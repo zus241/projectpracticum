@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<title>Project Demo</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: system-ui, sans-serif; background: #0f172a; color: #e2e8f0; padding: 24px; }
+h1 { margin-bottom: 16px; color: #38bdf8; }
+.card { background: #1e293b; padding: 20px; border-radius: 12px; margin-bottom: 16px; max-width: 600px; }
+input, button { padding: 10px; border-radius: 8px; border: 1px solid #334155; background: #0f172a; color: #e2e8f0; font-size: 14px; }
+input { width: 100%; margin-bottom: 10px; }
+button { background: #38bdf8; color: #0f172a; font-weight: 600; cursor: pointer; border: none; }
+button:hover { background: #0ea5e9; }
+.item { background: #0f172a; padding: 12px; border-radius: 8px; margin-top: 8px; display: flex; justify-content: space-between; align-items: center; }
+.del { background: #ef4444; color: white; padding: 6px 12px; font-size: 12px; }
+.tabs { display: flex; gap: 8px; margin-bottom: 16px; }
+.tab { padding: 8px 16px; background: #1e293b; border-radius: 8px; cursor: pointer; }
+.tab.active { background: #38bdf8; color: #0f172a; }
+.hidden { display: none; }
+.msg { color: #fbbf24; font-size: 13px; margin-top: 8px; }
+</style>
+</head>
+<body>
+<h1>📦 Project Demo — Items Manager</h1>
+
+<div class="tabs">
+  <div class="tab active" onclick="showTab('login')">Вход</div>
+  <div class="tab" onclick="showTab('items')">Записи</div>
+</div>
+
+<div id="login" class="card">
+  <h2>Регистрация / Вход</h2>
+  <input id="username" placeholder="Имя пользователя">
+  <input id="password" type="password" placeholder="Пароль">
+  <button onclick="register()">Зарегистрироваться</button>
+  <button onclick="login()" style="background:#22c55e">Войти</button>
+  <div class="msg" id="authMsg"></div>
+</div>
+
+<div id="items" class="card hidden">
+  <h2>Мои записи <span id="whoami" style="font-size:13px;color:#94a3b8"></span></h2>
+  <input id="title" placeholder="Название записи">
+  <input id="desc" placeholder="Описание">
+  <button onclick="addItem()">➕ Добавить</button>
+  <button onclick="logout()" style="background:#ef4444;float:right">Выйти</button>
+  <div id="list"></div>
+</div>
+
+<script>
+// Имитация БД через localStorage (демо без бэкенда)
+const DB = {
+  users: JSON.parse(localStorage.users || '{}'),
+  items: JSON.parse(localStorage.items || '[]'),
+  save() {
+    localStorage.users = JSON.stringify(this.users);
+    localStorage.items = JSON.stringify(this.items);
+  }
+};
+
+let currentUser = localStorage.currentUser || null;
+
+function showTab(t) {
+  document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
+  event.target.classList.add('active');
+  document.getElementById('login').classList.toggle('hidden', t !== 'login');
+  document.getElementById('items').classList.toggle('hidden', t !== 'items');
+  if (t === 'items') render();
+}
+
+function register() {
+  const u = username.value.trim(), p = password.value.trim();
+  if (u.length < 3 || p.length < 4) return authMsg.textContent = '⚠️ Логин ≥3, пароль ≥4 символов';
+  if (DB.users[u]) return authMsg.textContent = '⚠️ Пользователь уже существует';
+  DB.users[u] = { password: p, role: 'user' };
+  DB.save();
+  authMsg.textContent = '✅ Зарегистрирован! Теперь войди.';
+}
+
+function login() {
+  const u = username.value.trim(), p = password.value.trim();
+  if (!DB.users[u] || DB.users[u].password !== p) return authMsg.textContent = '⚠️ Неверный логин или пароль';
+  currentUser = u;
+  localStorage.currentUser = u;
+  authMsg.textContent = '';
+  showTab('items', { target: document.querySelectorAll('.tab')[1] });
+  whoami.textContent = `(${u})`;
+}
+
+function logout() {
+  currentUser = null;
+  localStorage.removeItem('currentUser');
+  location.reload();
+}
+
+function addItem() {
+  if (!currentUser) return alert('Войдите');
+  if (!title.value.trim()) return alert('Введите название');
+  DB.items.push({
+    id: Date.now(),
+    title: title.value.trim(),
+    desc: desc.value.trim(),
+    owner: currentUser
+  });
+  DB.save();
+  title.value = ''; desc.value = '';
+  render();
+}
+
+function delItem(id) {
+  DB.items = DB.items.filter(i => i.id !== id);
+  DB.save();
+  render();
+}
+
+function render() {
+  const mine = DB.items.filter(i => i.owner === currentUser);
+  list.innerHTML = mine.length
+    ? mine.map(i => `<div class="item"><div><b>${i.title}</b><br><small>${i.desc || '—'}</small></div><button class="del" onclick="delItem(${i.id})">Удалить</button></div>`).join('')
+    : '<p style="color:#94a3b8;margin-top:12px">Пока пусто. Добавь первую запись.</p>';
+}
+
+// Автовход
+if (currentUser) {
+  document.querySelectorAll('.tab')[1].click();
+  whoami.textContent = `(${currentUser})`;
+}
+</script>
+</body>
+</html>
